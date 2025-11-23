@@ -11,7 +11,7 @@ import Combine
 
 struct ContentView: View {
     @StateObject private var bluetoothManager = BluetoothManager()
-    @State private var maxSpeed: Double = 500 // Default max speed
+    @State private var maxSpeed: Double = 100 // Default max speed
     
     var body: some View {
         GeometryReader { geometry in
@@ -170,23 +170,38 @@ struct ContentView: View {
                     .background(Color.blue.opacity(0.1))
                     .cornerRadius(12)
                     
-                    // Control Buttons Row
+                    // Control Buttons Row with indicators
                     VStack(spacing: 10) {
                         HStack(spacing: 20) {
-                            // Left Button (-1) - передает -1 сразу при нажатии
-                            Button(action: {
-                                bluetoothManager.sendThirdParameter(-1)
-                            }) {
-                                Text("DOWN")
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.white)
+                            // Left Button (-1) with battery indicator
+                            VStack(spacing: 8) {
+                                Button(action: {
+                                    bluetoothManager.sendThirdParameter(-1)
+                                }) {
+                                    Text("DOWN")
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                                .frame(height: 50)
+                                .background(Color.orange.opacity(0.7))
+                                .cornerRadius(10)
+                                
+                                // Battery indicator
+                                VStack(spacing: 4) {
+                                    HStack {
+                                        Image(systemName: "battery.100")
+                                            .foregroundColor(getBatteryColor(bluetoothManager.batteryLevel))
+                                        Text("\(bluetoothManager.batteryLevel, specifier: "%.1f")%")
+                                            .font(.system(size: 12, weight: .medium))
+                                    }
+                                    Text("CHARGE")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.gray)
+                                }
                             }
-                            .frame(height: 50)
-                            .background(Color.orange.opacity(0.7))
-                            .cornerRadius(10)
                             
-                            // Center Button (Stop) - передает 0 сразу при нажатии
+                            // Center Button (Stop)
                             Button(action: {
                                 bluetoothManager.sendThirdParameter(0)
                             }) {
@@ -199,18 +214,33 @@ struct ContentView: View {
                             .background(Color.red.opacity(0.7))
                             .cornerRadius(10)
                             
-                            // Right Button (+1) - передает +1 сразу при нажатии
-                            Button(action: {
-                                bluetoothManager.sendThirdParameter(1)
-                            }) {
-                                Text("UP")
-                                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                                    .font(.system(size: 18, weight: .bold))
-                                    .foregroundColor(.white)
+                            // Right Button (+1) with speed indicator
+                            VStack(spacing: 8) {
+                                Button(action: {
+                                    bluetoothManager.sendThirdParameter(1)
+                                }) {
+                                    Text("UP")
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                        .font(.system(size: 18, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                                .frame(height: 50)
+                                .background(Color.green.opacity(0.7))
+                                .cornerRadius(10)
+                                
+                                // Speed indicator
+                                VStack(spacing: 4) {
+                                    HStack {
+                                        Image(systemName: "speedometer")
+                                            .foregroundColor(.blue)
+                                        Text("\(bluetoothManager.currentSpeed, specifier: "%.1f")")
+                                            .font(.system(size: 12, weight: .medium))
+                                    }
+                                    Text("SPEED")
+                                        .font(.system(size: 10))
+                                        .foregroundColor(.gray)
+                                }
                             }
-                            .frame(height: 50)
-                            .background(Color.green.opacity(0.7))
-                            .cornerRadius(10)
                         }
                     }
                     
@@ -241,6 +271,17 @@ struct ContentView: View {
         }
         .onAppear {
             bluetoothManager.maxSpeed = Int(maxSpeed)
+        }
+    }
+    
+    private func getBatteryColor(_ level: Double) -> Color {
+        switch level {
+        case 70...100:
+            return .green
+        case 30..<70:
+            return .orange
+        default:
+            return .red
         }
     }
 }
@@ -370,7 +411,7 @@ struct JoystickView: View {
     }
 }
 
-// Bluetooth Manager (остается без изменений)
+// Updated Bluetooth Manager with battery and speed monitoring
 class BluetoothManager: NSObject, ObservableObject {
     private var centralManager: CBCentralManager!
     
@@ -391,6 +432,10 @@ class BluetoothManager: NSObject, ObservableObject {
     @Published var bluetoothState: String = "Unknown"
     @Published var debugLog: String = ""
     @Published var connectedPeripheral: CBPeripheral? = nil
+    
+    // New properties for battery and speed monitoring
+    @Published var batteryLevel: Double = 0.0
+    @Published var currentSpeed: Double = 0.0
     
     private var writeCharacteristic: CBCharacteristic?
     
@@ -564,6 +609,30 @@ class BluetoothManager: NSObject, ObservableObject {
         }
     }
     
+    // Parse incoming data from controller (battery and speed)
+    private func parseIncomingData(_ data: Data) {
+        if let dataString = String(data: data, encoding: .utf8) {
+            let components = dataString.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\t")
+            
+            if components.count == 2 {
+                // Parse battery level (первое значение) - уже в процентах
+                if let batteryValue = Double(components[0]) {
+                    DispatchQueue.main.async {
+                        // Используем значение как есть, без конвертации
+                        self.batteryLevel = batteryValue
+                    }
+                }
+                
+                // Parse speed (второе значение)
+                if let speedValue = Double(components[1]) {
+                    DispatchQueue.main.async {
+                        self.currentSpeed = speedValue
+                    }
+                }
+            }
+        }
+    }
+    
     // Add device to discovered list with proper main thread handling
     private func addDiscoveredDevice(_ peripheral: CBPeripheral) {
         // Check if we already have this device
@@ -582,7 +651,7 @@ class BluetoothManager: NSObject, ObservableObject {
     }
 }
 
-// CBCentralManagerDelegate (остается без изменений)
+// CBCentralManagerDelegate
 extension BluetoothManager: CBCentralManagerDelegate {
     func centralManagerDidUpdateState(_ central: CBCentralManager) {
         switch central.state {
@@ -655,7 +724,7 @@ extension BluetoothManager: CBCentralManagerDelegate {
     }
 }
 
-// CBPeripheralDelegate (остается без изменений)
+// CBPeripheralDelegate
 extension BluetoothManager: CBPeripheralDelegate {
     func peripheral(_ peripheral: CBPeripheral, didDiscoverServices error: Error?) {
         if let error = error {
@@ -696,6 +765,11 @@ extension BluetoothManager: CBPeripheralDelegate {
         if let error = error {
             return
         }
+        
+        guard let data = characteristic.value else { return }
+        
+        // Parse incoming data for battery and speed
+        parseIncomingData(data)
     }
 }
 
