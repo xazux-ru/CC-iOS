@@ -124,16 +124,16 @@ struct ContentView: View {
                     
                     // Max Speed Slider
                     VStack(spacing: 10) {
-                        Text("Max Motor Speed: \(Int(maxSpeed))")
+                        Text("Max Motor Speed: \(Int(maxSpeed)/10)%")
                             .font(.headline)
                         
                         HStack {
-                            Text("10")
+                            Text("1%")
                             Slider(value: $maxSpeed, in: 10...1000, step: 10)
                                 .onChange(of: maxSpeed) { oldValue, newValue in
                                     bluetoothManager.maxSpeed = Int(newValue)
                                 }
-                            Text("1000")
+                            Text("100%")
                         }
                         
                         HStack {
