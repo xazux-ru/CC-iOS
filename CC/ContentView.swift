@@ -190,9 +190,9 @@ struct ContentView: View {
                                 // Battery indicator
                                 VStack(spacing: 4) {
                                     HStack {
-                                        Image(systemName: "battery.100")
+                                        Image(systemName: getBatteryIcon(bluetoothManager.batteryLevel))
                                             .foregroundColor(getBatteryColor(bluetoothManager.batteryLevel))
-                                        Text("\(bluetoothManager.batteryLevel, specifier: "%.1f")%")
+                                        Text("\(Int(bluetoothManager.batteryLevel))/41V")
                                             .font(.system(size: 12, weight: .medium))
                                     }
                                     Text("CHARGE")
@@ -274,14 +274,30 @@ struct ContentView: View {
         }
     }
     
-    private func getBatteryColor(_ level: Double) -> Color {
-        switch level {
-        case 70...100:
-            return .green
-        case 30..<70:
-            return .orange
+    private func getBatteryColor(_ voltage: Double) -> Color {
+        switch voltage {
+        case 38.4...:
+            return .green      // (70–100%)
+        case 33.6..<38.4:
+            return .orange     // (30–70%)
+        case 30.0..<33.6:
+            return .red        // (0–30%)
         default:
-            return .red
+            return .red        // < 30% or error
+        }
+    }
+    private func getBatteryIcon(_ voltage: Double) -> String {
+        switch voltage {
+        case 38.4...:
+            return "battery.100percent"      // 70–100%
+        case 36.0..<38.4:
+            return "battery.75percent"       // ~50–70%
+        case 33.6..<36.0:
+            return "battery.50percent"       // ~30–50%
+        case 31.2..<33.6:
+            return "battery.25percent"       // ~10–30%
+        default:
+            return "battery.0percent"        // 0–10%
         }
     }
 }
