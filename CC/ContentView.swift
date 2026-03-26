@@ -12,6 +12,7 @@ import Combine
 struct ContentView: View {
     @StateObject private var bluetoothManager = BluetoothManager()
     @State private var maxSpeed: Double = 100 // Default max speed
+    @State private var showDevicePicker = false // Popover device selection
     
     var body: some View {
         GeometryReader { geometry in
@@ -36,6 +37,7 @@ struct ContentView: View {
                         Spacer()
                         
                         // Device Selection with simple Menu - Always centered
+                        // Device Selection with popover - Always centered
                         HStack {
                             if bluetoothManager.isScanning {
                                 ProgressView()
@@ -43,44 +45,9 @@ struct ContentView: View {
                                     .padding(.trailing, 4)
                             }
                             
-                            Menu {
-                                // Devices List - Directly in the main menu
-                                if bluetoothManager.discoveredDevices.isEmpty {
-                                    Button("No devices found") { }
-                                        .disabled(true)
-                                } else {
-                                    ForEach(bluetoothManager.discoveredDevices, id: \.identifier) { device in
-                                        Button(action: {
-                                            bluetoothManager.connectToDevice(device)
-                                        }) {
-                                            HStack {
-                                                Text(device.name ?? "Unknown Device")
-                                                Spacer()
-                                                if bluetoothManager.connectedPeripheral?.identifier == device.identifier {
-                                                    Image(systemName: "checkmark")
-                                                        .foregroundColor(.blue)
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                Divider()
-                                
-                                // Scan/Stop Scan Button at bottom
-                                Button(action: {
-                                    if bluetoothManager.isScanning {
-                                        bluetoothManager.stopScan()
-                                    } else {
-                                        bluetoothManager.startScan()
-                                    }
-                                }) {
-                                    HStack {
-                                        Image(systemName: bluetoothManager.isScanning ? "stop.circle" : "arrow.clockwise")
-                                        Text(bluetoothManager.isScanning ? "Stop Scan" : "Scan for Devices")
-                                    }
-                                }
-                            } label: {
+                            Button(action: {
+                                showDevicePicker = true
+                            }) {
                                 HStack {
                                     Image(systemName: "antenna.radiowaves.left.and.right")
                                     if let connectedDevice = bluetoothManager.connectedPeripheral {
@@ -97,6 +64,11 @@ struct ContentView: View {
                                 .background(Color.blue.opacity(0.1))
                                 .foregroundColor(.blue)
                                 .cornerRadius(8)
+                            }
+                            .popover(isPresented: $showDevicePicker, attachmentAnchor: .point(.bottom)) {
+                                DevicePickerPopover(bluetoothManager: bluetoothManager)
+                                    .presentationDetents([.medium])
+                                    .presentationDragIndicator(.visible)
                             }
                         }
                         
@@ -192,7 +164,7 @@ struct ContentView: View {
                                     HStack {
                                         Image(systemName: getBatteryIcon(bluetoothManager.batteryLevel))
                                             .foregroundColor(getBatteryColor(bluetoothManager.batteryLevel))
-                                        Text("\(Int(bluetoothManager.batteryLevel))/41V")
+                                        Text("\(Int(bluetoothManager.batteryLevel)) / 41V")
                                             .font(.system(size: 12, weight: .medium))
                                     }
                                     Text("CHARGE")
@@ -631,15 +603,14 @@ class BluetoothManager: NSObject, ObservableObject {
             let components = dataString.trimmingCharacters(in: .whitespacesAndNewlines).components(separatedBy: "\t")
             
             if components.count == 2 {
-                // Parse battery level (первое значение) - уже в процентах
+                // Parse battery level
                 if let batteryValue = Double(components[0]) {
                     DispatchQueue.main.async {
-                        // Используем значение как есть, без конвертации
                         self.batteryLevel = batteryValue
                     }
                 }
                 
-                // Parse speed (второе значение)
+                // Parse speed
                 if let speedValue = Double(components[1]) {
                     DispatchQueue.main.async {
                         self.currentSpeed = speedValue
@@ -786,6 +757,90 @@ extension BluetoothManager: CBPeripheralDelegate {
         
         // Parse incoming data for battery and speed
         parseIncomingData(data)
+    }
+}
+
+// Popover
+struct DevicePickerPopover: View {
+    @ObservedObject var bluetoothManager: BluetoothManager
+    
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Available Devices")
+                    .font(.headline)
+            }
+            .padding()
+            
+            Divider()
+            
+            // Device list
+            List {
+                // Devica filter by name
+                let namedDevices = bluetoothManager.discoveredDevices.filter {
+                    $0.name != nil && !$0.name!.isEmpty
+                }
+                
+                if namedDevices.isEmpty {
+                    HStack {
+                        Image(systemName: "antenna.radiowaves.left.and.right.slash")
+                        Text("No devices found")
+                            .foregroundColor(.gray)
+                    }
+                    .listRowBackground(Color.clear)
+                } else {
+                    ForEach(namedDevices, id: \.identifier) { device in
+                        Button(action: {
+                            bluetoothManager.connectToDevice(device)
+                        }) {
+                            HStack {
+                                VStack(alignment: .leading) {
+                                    Text(device.name!)
+                                        .font(.body)
+                                    Text(device.identifier.uuidString.prefix(8))
+                                        .font(.caption)
+                                        .foregroundColor(.gray)
+                                }
+                                Spacer()
+                                if bluetoothManager.connectedPeripheral?.identifier == device.identifier {
+                                    Image(systemName: "checkmark")
+                                        .foregroundColor(.blue)
+                                }
+                            }
+                            .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.plain)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                    }
+                }
+            }
+            .listStyle(.plain)
+            
+            Divider()
+            
+            // Кнопка сканирования внизу
+            Button(action: {
+                if bluetoothManager.isScanning {
+                    bluetoothManager.stopScan()
+                } else {
+                    bluetoothManager.startScan()
+                }
+            }) {
+                HStack {
+                    Image(systemName: bluetoothManager.isScanning ? "stop.circle.fill" : "arrow.clockwise.circle.fill")
+                    Text(bluetoothManager.isScanning ? "Stop Scan" : "Scan for Devices")
+                        .font(.system(size: 16, weight: .medium))
+                }
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(bluetoothManager.isScanning ? Color.orange : Color.blue)
+                .cornerRadius(10)
+            }
+            .padding()
+            .buttonStyle(.plain)
+        }
+        .frame(minWidth: 280, maxWidth: 320)
     }
 }
 

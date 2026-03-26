@@ -269,6 +269,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CC/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CC;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app needs Bluetooth to communicate with HM-10 modules";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "This app needs Bluetooth to connect with HM-10 modules";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -281,7 +282,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = xazuxru.CC;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -309,6 +310,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CC/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CC;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
 				INFOPLIST_KEY_NSBluetoothAlwaysUsageDescription = "This app needs Bluetooth to communicate with HM-10 modules";
 				INFOPLIST_KEY_NSBluetoothPeripheralUsageDescription = "This app needs Bluetooth to connect with HM-10 modules";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -321,7 +323,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = xazuxru.CC;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
