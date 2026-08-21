@@ -1,5 +1,7 @@
 # CC (Cart Controller)
 
+## :warning: Project closed
+
 ### This app is designed to control a self-propelled radio-controlled cart.
 
 ___
